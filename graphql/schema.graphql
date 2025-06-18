@@ -1,0 +1,146 @@
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+enum UserRole {
+    ADMIN
+    USER
+}
+
+enum PostStatus {
+    DRAFT
+    PUBLISHED
+    ARCHIVED
+}
+
+"Indicates what fields are available at the top level of a query operation."
+type Query {
+    "Find a single user by an identifying attribute."
+    user(
+      "Search by primary key."
+      id: ID @eq @rules(apply: ["prohibits:email", "required_without:email"])
+
+      "Search by email address."
+      email: String @eq @rules(apply: ["prohibits:id", "required_without:id", "email"])
+    ): User @find
+
+    "List multiple users."
+    users(
+      "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+      name: String @where(operator: "like")
+    ): [User!]! @all
+
+    "List all posts."
+    posts: [Post!]! @all
+
+    "Filter posts by status."
+    postsByStatus(status: PostStatus!): [Post!]! @field(resolver: "App\\GraphQL\\Queries\\PostsByStatusResolver")
+}
+
+"Account of a person who uses this application."
+type User {
+    "Unique primary key."
+    id: ID!
+
+    "Non-unique name."
+    name: String!
+
+    "Unique email address."
+    email: String!
+
+    "User's role in the application."
+    role: UserRole!
+
+    "When the email was verified."
+    email_verified_at: DateTime
+
+    "When the account was created."
+    created_at: DateTime!
+
+    "When the account was last updated."
+    updated_at: DateTime!
+
+    "User's posts."
+    posts: [Post!]! @hasMany
+}
+
+"A blog post."
+type Post {
+    "Unique primary key."
+    id: ID!
+
+    "The post title."
+    title: String!
+
+    "The post content."
+    content: String!
+
+    "The post status."
+    status: PostStatus!
+
+    "The post author."
+    user: User! @belongsTo
+
+    "The post comments."
+    comments: [Comment!]! @hasMany
+
+    "When the post was created."
+    created_at: DateTime!
+
+    "When the post was last updated."
+    updated_at: DateTime!
+}
+
+"A comment on a post."
+type Comment {
+    "Unique primary key."
+    id: ID!
+
+    "The comment content."
+    content: String!
+
+    "The comment author."
+    user: User! @belongsTo
+
+    "The post this comment belongs to."
+    post: Post! @belongsTo
+
+    "When the comment was created."
+    created_at: DateTime!
+
+    "When the comment was last updated."
+    updated_at: DateTime!
+}
+
+type Mutation {
+    "Create a new user."
+    createUser(input: CreateUserInput! @spread): User! @create
+
+    "Create a new post."
+    createPost(input: CreatePostInput! @spread): Post! @create
+
+    "Update an existing post."
+    updatePost(id: ID!, input: UpdatePostInput! @spread): Post! @update
+
+    "Delete a comment."
+    deleteComment(id: ID!): Comment! @field(resolver: "App\\GraphQL\\Mutations\\DeleteComment")
+}
+
+input CreateUserInput {
+    name: String! @rules(apply: ["required", "min:3"])
+    email: String! @rules(apply: ["required", "email", "unique:users,email"])
+    password: String! @rules(apply: ["required", "min:8"])
+    role: UserRole! @rules(apply: ["required"])
+}
+
+input CreatePostInput {
+    title: String! @rules(apply: ["required", "min:3"])
+    content: String! @rules(apply: ["required"])
+    status: PostStatus! @rules(apply: ["required"])
+    user_id: ID! @rules(apply: ["required", "exists:users,id"])
+}
+
+input UpdatePostInput {
+    title: String @rules(apply: ["min:3"])
+    content: String
+    status: PostStatus
+}

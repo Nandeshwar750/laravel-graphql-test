@@ -34,6 +34,21 @@ type Query {
 
     "Filter posts by status."
     postsByStatus(status: PostStatus!): [Post!]! @field(resolver: "App\\GraphQL\\Queries\\PostsByStatusResolver")
+
+    "Find a single category by an identifying attribute."
+    category(
+      "Search by primary key."
+      id: ID @eq @rules(apply: ["prohibits:slug", "required_without:slug"])
+
+      "Search by slug."
+      slug: String @eq @rules(apply: ["prohibits:id", "required_without:id"])
+    ): Category @find
+
+    "List all categories."
+    categories(
+      "Filter by active status."
+      is_active: Boolean @eq
+    ): [Category!]! @all
 }
 
 "Account of a person who uses this application."
@@ -80,6 +95,9 @@ type Post {
     "The post author."
     user: User! @belongsTo
 
+    "The post category."
+    category: Category @belongsTo
+
     "The post comments."
     comments: [Comment!]! @hasMany
 
@@ -87,6 +105,33 @@ type Post {
     created_at: DateTime!
 
     "When the post was last updated."
+    updated_at: DateTime!
+}
+
+"A category for organizing posts."
+type Category {
+    "Unique primary key."
+    id: ID!
+
+    "The category name."
+    name: String!
+
+    "The category slug."
+    slug: String!
+
+    "The category description."
+    description: String
+
+    "Whether the category is active."
+    is_active: Boolean!
+
+    "Posts in this category."
+    posts: [Post!]! @hasMany
+
+    "When the category was created."
+    created_at: DateTime!
+
+    "When the category was last updated."
     updated_at: DateTime!
 }
 
@@ -123,6 +168,15 @@ type Mutation {
 
     "Delete a comment."
     deleteComment(id: ID!): Comment! @field(resolver: "App\\GraphQL\\Mutations\\DeleteComment")
+
+    "Create a new category."
+    createCategory(input: CreateCategoryInput! @spread): Category! @create
+
+    "Update an existing category."
+    updateCategory(id: ID!, input: UpdateCategoryInput! @spread): Category! @update
+
+    "Delete a category."
+    deleteCategory(id: ID!): Category! @delete
 }
 
 input CreateUserInput {
@@ -137,10 +191,26 @@ input CreatePostInput {
     content: String! @rules(apply: ["required"])
     status: PostStatus! @rules(apply: ["required"])
     user_id: ID! @rules(apply: ["required", "exists:users,id"])
+    category_id: ID @rules(apply: ["exists:categories,id"])
 }
 
 input UpdatePostInput {
     title: String @rules(apply: ["min:3"])
     content: String
     status: PostStatus
+    category_id: ID @rules(apply: ["exists:categories,id"])
+}
+
+input CreateCategoryInput {
+    name: String! @rules(apply: ["required", "min:2"])
+    slug: String @rules(apply: ["unique:categories,slug"])
+    description: String
+    is_active: Boolean
+}
+
+input UpdateCategoryInput {
+    name: String @rules(apply: ["min:2"])
+    slug: String @rules(apply: ["unique:categories,slug"])
+    description: String
+    is_active: Boolean
 }

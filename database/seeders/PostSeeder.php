@@ -6,6 +6,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Post;
 use App\Models\User;
+use App\Models\Category;
 
 class PostSeeder extends Seeder
 {
@@ -15,6 +16,7 @@ class PostSeeder extends Seeder
     public function run(): void
     {
         $users = User::all();
+        $categories = Category::active()->get();
 
         foreach ($users as $user) {
             Post::create([
@@ -22,6 +24,7 @@ class PostSeeder extends Seeder
                 'content' => 'This is the content of the first post.',
                 'status' => 'PUBLISHED',
                 'user_id' => $user->id,
+                'category_id' => $categories->random()->id,
             ]);
 
             Post::create([
@@ -29,6 +32,7 @@ class PostSeeder extends Seeder
                 'content' => 'This is a draft post content.',
                 'status' => 'DRAFT',
                 'user_id' => $user->id,
+                'category_id' => $categories->random()->id,
             ]);
         }
     }

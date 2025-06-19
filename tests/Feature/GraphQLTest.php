@@ -281,4 +281,141 @@ class GraphQLTest extends TestCase
         $response->assertStatus(200);
         $this->assertDatabaseMissing('comments', ['id' => $comment->id]);
     }
+
+    public function test_can_fetch_categories()
+    {
+        $response = $this->postJson('/graphql', [
+            'query' => '
+                query {
+                    categories {
+                        id
+                        name
+                        slug
+                        description
+                        is_active
+                        posts {
+                            id
+                            title
+                            status
+                        }
+                    }
+                }
+            '
+        ]);
+
+        // Debug: Print the response
+        dump('Categories Response:', $response->json());
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'data' => [
+                'categories' => [
+                    '*' => [
+                        'id',
+                        'name',
+                        'slug',
+                        'description',
+                        'is_active',
+                        'posts' => [
+                            '*' => [
+                                'id',
+                                'title',
+                                'status'
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+
+        $data = $response->json('data.categories');
+        $this->assertNotEmpty($data);
+        $this->assertArrayHasKey('name', $data[0]);
+        $this->assertArrayHasKey('slug', $data[0]);
+    }
+
+    public function test_can_fetch_single_category()
+    {
+        $category = \App\Models\Category::first();
+
+        $response = $this->postJson('/graphql', [
+            'query' => '
+                query {
+                    category(id: ' . $category->id . ') {
+                        id
+                        name
+                        slug
+                        description
+                        is_active
+                        posts {
+                            id
+                            title
+                        }
+                    }
+                }
+            '
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'data' => [
+                'category' => [
+                    'id',
+                    'name',
+                    'slug',
+                    'description',
+                    'is_active',
+                    'posts' => [
+                        '*' => [
+                            'id',
+                            'title'
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+
+        $data = $response->json('data.category');
+        $this->assertEquals($category->id, $data['id']);
+        $this->assertEquals($category->name, $data['name']);
+    }
+
+    public function test_can_create_category()
+    {
+        $response = $this->postJson('/graphql', [
+            'query' => '
+                mutation {
+                    createCategory(input: {
+                        name: "Test Category"
+                        description: "A test category"
+                        is_active: true
+                    }) {
+                        id
+                        name
+                        slug
+                        description
+                        is_active
+                    }
+                }
+            '
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'data' => [
+                'createCategory' => [
+                    'id',
+                    'name',
+                    'slug',
+                    'description',
+                    'is_active'
+                ]
+            ]
+        ]);
+
+        $data = $response->json('data.createCategory');
+        $this->assertEquals('Test Category', $data['name']);
+        $this->assertEquals('test-category', $data['slug']);
+        $this->assertTrue($data['is_active']);
+    }
 }

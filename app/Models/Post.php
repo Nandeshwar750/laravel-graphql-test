@@ -12,7 +12,8 @@ class Post extends Model
         'title',
         'content',
         'status',
-        'user_id'
+        'user_id',
+        'category_id'
     ];
 
     protected $casts = [
@@ -22,6 +23,11 @@ class Post extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function comments(): HasMany
